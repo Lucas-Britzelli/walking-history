@@ -1,14 +1,29 @@
-import { View, Text, StyleSheet } from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
+import { StyleSheet, View } from 'react-native';
 
 export default function MapScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Map</Text>
+      <MapView
+        style={styles.map}
+        initialRegion={{
+          latitude: 59.3293,
+          longitude: 18.0686,
+          latitudeDelta: 0.05,
+          longitudeDelta: 0.05,
+        }}
+      >
+        <Marker
+          coordinate={{ latitude: 59.3293, longitude: 18.0686 }}
+          title="Stockholm"
+          description="Welcome to Walking History"
+        />
+      </MapView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#2C5F2E' },
+  container: { flex: 1 },
+  map: { width: '100%', height: '100%' },
 });
