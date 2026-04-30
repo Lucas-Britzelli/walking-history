@@ -14,7 +14,7 @@ export default function RoutesScreen() {
         keyExtractor={r => r.id}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => (
-          <TouchableOpacity style={styles.card}>
+          <TouchableOpacity style={styles.card} onPress={() => router.push(`/route/${item.id}`)}>
             <View style={styles.cardHeader}>
               <Text style={styles.era}>{item.era}</Text>
             </View>

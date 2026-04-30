@@ -5,6 +5,7 @@ export default function RootLayout() {
     <Stack>
       <Stack.Screen name="(tabs)" options={{ title: 'Walking History' }} />
       <Stack.Screen name="landmark/[id]" options={{ title: '' }} />
+      <Stack.Screen name="route/[id]" options={{ title: '' }} />
     </Stack>
   );
 }
