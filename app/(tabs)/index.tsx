@@ -1,9 +1,13 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, Polyline } from 'react-native-maps';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import * as Location from 'expo-location';
+import { useRoute } from '../../lib/RouteContext';
+
+
+
 
 const LANDMARKS = [
   {
@@ -61,8 +65,11 @@ function formatDistance(meters: number) {
 
 export default function MapScreen() {
     const router = useRouter();
+    const mapRef = useRef<MapView>(null);
+    const { activeRoute, setActiveRoute } = useRoute();
     const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
     const [nearestLandmark, setNearestLandmark] = useState<typeof LANDMARKS[0] & { distance: number } | null>(null);
+
 
   useEffect(() => {
     (async () => {
@@ -82,49 +89,82 @@ export default function MapScreen() {
       setNearestLandmark(nearest);
     })();
   }, []);
+  useEffect(() => {
+  if (activeRoute && activeRoute.coords.length > 0 && mapRef.current) {
+    mapRef.current.fitToCoordinates(activeRoute.coords, {
+      edgePadding: { top: 60, right: 60, bottom: 60, left: 60 },
+      animated: true,
+    });
+  }
+}, [activeRoute]);
    return (
     <View style={styles.container}>
-      <MapView
-        style={styles.map}
-        showsUserLocation={true}
-        initialRegion={{
-          latitude: 59.3255,
-          longitude: 18.0700,
-          latitudeDelta: 0.02,
-          longitudeDelta: 0.02,
-        }}
-      >
-        {LANDMARKS.map(landmark => (
-          <Marker
-            key={landmark.id}
-            coordinate={landmark.coordinate}
-            title={landmark.name}
-            description={landmark.description}
-            pinColor='#2C5F2E'
-            onPress={() => router.push(`/landmark/${landmark.id}`)}
-          />
-        ))}
-      </MapView>
+<MapView
+  style={styles.map}
+  showsUserLocation={true}
+  initialRegion={{
+    latitude: 59.3255,
+    longitude: 18.0700,
+    latitudeDelta: 0.02,
+    longitudeDelta: 0.02,
+  }}
+>
+  {LANDMARKS.map(landmark => (
+    <Marker
+      key={landmark.id}
+      coordinate={landmark.coordinate}
+      title={landmark.name}
+      description={landmark.description}
+      pinColor='#2C5F2E'
+      onPress={() => router.push(`/landmark/${landmark.id}`)}
+    />
+  ))}
 
-      {nearestLandmark && (
-        <View style={styles.card}>
-          <View style={styles.cardContent}>
-            <Text style={styles.cardEra}>{nearestLandmark.era}</Text>
-            <Text style={styles.cardName}>{nearestLandmark.name}</Text>
-            <View style={styles.cardDistance}>
-              <Ionicons name="location" size={14} color="#2C5F2E" />
-              <Text style={styles.cardDistanceText}>{formatDistance(nearestLandmark.distance)}</Text>
-            </View>
-          </View>
-          <TouchableOpacity
-            style={styles.cardButton}
-            onPress={() => router.push(`/landmark/${nearestLandmark.id}`)}
-          >
-            <Text style={styles.cardButtonText}>Learn More</Text>
-            <Ionicons name="chevron-forward" size={16} color="#2C5F2E" />
-          </TouchableOpacity>
-        </View>
-      )}
+  {activeRoute && activeRoute.coords.length > 0 && (
+    <Polyline
+      coordinates={activeRoute.coords}
+      strokeColor="#2C5F2E"
+      strokeWidth={4}
+    />
+  )}
+</MapView>
+
+{activeRoute ? (
+  <View style={styles.card}>
+    <View style={styles.cardContent}>
+      <Text style={styles.cardEra}>Active Route</Text>
+      <Text style={styles.cardName}>{activeRoute.name}</Text>
+      <View style={styles.cardDistance}>
+        <Ionicons name="navigate" size={14} color="#2C5F2E" />
+        <Text style={styles.cardDistanceText}>{activeRoute.landmarks.length} landmarks</Text>
+      </View>
+    </View>
+    <TouchableOpacity
+      style={styles.stopButton}
+      onPress={() => setActiveRoute(null)}
+    >
+      <Text style={styles.stopButtonText}>Stop</Text>
+    </TouchableOpacity>
+  </View>
+) : nearestLandmark ? (
+  <View style={styles.card}>
+    <View style={styles.cardContent}>
+      <Text style={styles.cardEra}>{nearestLandmark.era}</Text>
+      <Text style={styles.cardName}>{nearestLandmark.name}</Text>
+      <View style={styles.cardDistance}>
+        <Ionicons name="location" size={14} color="#2C5F2E" />
+        <Text style={styles.cardDistanceText}>{formatDistance(nearestLandmark.distance)}</Text>
+      </View>
+    </View>
+    <TouchableOpacity
+      style={styles.cardButton}
+      onPress={() => router.push(`/landmark/${nearestLandmark.id}`)}
+    >
+      <Text style={styles.cardButtonText}>Learn More</Text>
+      <Ionicons name="chevron-forward" size={16} color="#2C5F2E" />
+    </TouchableOpacity>
+  </View>
+) : null}
     </View>
   );
 }
@@ -156,4 +196,11 @@ const styles = StyleSheet.create({
   cardDistanceText: { fontSize: 13, color: '#2C5F2E', fontWeight: '500' },
   cardButton: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingLeft: 12 },
   cardButtonText: { fontSize: 14, fontWeight: '600', color: '#2C5F2E' },
+  stopButton: {
+  backgroundColor: '#e74c3c',
+  paddingHorizontal: 16,
+  paddingVertical: 8,
+  borderRadius: 8,
+},
+stopButtonText: { color: '#fff', fontWeight: '600', fontSize: 14 },
 });

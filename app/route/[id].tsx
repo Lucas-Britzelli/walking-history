@@ -1,9 +1,12 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
-import { useLocalSearchParams, useNavigation } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { ROUTES } from '../../data/routes';
+import { useRoute } from '../../lib/RouteContext';
+
+
 
 const LANDMARK_COORDS: Record<string, { latitude: number; longitude: number; name: string }> = {
   '1': { latitude: 59.3233, longitude: 18.0686, name: 'Gamla Stan' },
@@ -33,6 +36,8 @@ function getBounds(coords: { latitude: number; longitude: number }[]) {
 export default function RouteScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const navigation = useNavigation();
+  const { setActiveRoute } = useRoute();
+  const router = useRouter();
   const route = ROUTES.find(r => r.id === id);
   const [routeCoords, setRouteCoords] = useState<{ latitude: number; longitude: number }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -138,10 +143,22 @@ export default function RouteScreen() {
         </View>
       </View>
 
-      <TouchableOpacity style={styles.startButton}>
-        <Ionicons name="navigate" size={20} color="#fff" />
-        <Text style={styles.startText}>Start Route</Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.startButton}
+          onPress={() => {
+            console.log('routeCoords at press:', routeCoords.length, routeCoords[0]);
+            setActiveRoute({
+              id: route.id,
+              name: route.name,
+              coords: routeCoords,
+              landmarks: route.landmarks,
+            });
+            router.push('/(tabs)');
+          }}
+        >
+          <Ionicons name="navigate" size={20} color="#fff" />
+          <Text style={styles.startText}>Start Route</Text>
+        </TouchableOpacity>
 
       <View style={styles.landmarkList}>
         <Text style={styles.landmarksTitle}>Landmarks</Text>
