@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useRef, useEffect, useState } from 'react';
 import * as Location from 'expo-location';
-import { useRoute } from '../../lib/RouteContext';
+import { useActiveRoute } from '../../lib/RouteContext';
 
 
 
@@ -63,12 +63,26 @@ function formatDistance(meters: number) {
   return `${(meters / 1000).toFixed(1)} km away`;
 }
 
+function getNextLandmark(
+  userLat: number,
+  userLng: number,
+  landmarkIds: string[],
+  coords: Record<string, { latitude: number; longitude: number; name: string; era?: string }>
+) {
+  const withDistance = landmarkIds.map(id => ({
+    id,
+    ...coords[id],
+    distance: getDistance(userLat, userLng, coords[id].latitude, coords[id].longitude),
+  }));
+  return withDistance.sort((a, b) => a.distance - b.distance)[0];
+}
+
 export default function MapScreen() {
     const router = useRouter();
     const mapRef = useRef<MapView>(null);
-    const { activeRoute, setActiveRoute } = useRoute();
-    const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+    const { activeRoute, setActiveRoute, toStartCoords } = useActiveRoute();    const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
     const [nearestLandmark, setNearestLandmark] = useState<typeof LANDMARKS[0] & { distance: number } | null>(null);
+    const [nextLandmark, setNextLandmark] = useState<{ id: string; name: string; distance: number } | null>(null);
 
 
   useEffect(() => {
@@ -89,7 +103,7 @@ export default function MapScreen() {
       setNearestLandmark(nearest);
     })();
   }, []);
-  useEffect(() => {
+useEffect(() => {
   if (activeRoute && activeRoute.coords.length > 0 && mapRef.current) {
     mapRef.current.fitToCoordinates(activeRoute.coords, {
       edgePadding: { top: 60, right: 60, bottom: 60, left: 60 },
@@ -97,6 +111,17 @@ export default function MapScreen() {
     });
   }
 }, [activeRoute]);
+
+useEffect(() => {
+  if (!activeRoute || !location) return;
+  const next = getNextLandmark(
+    location.latitude,
+    location.longitude,
+    activeRoute.landmarks,
+    LANDMARKS.reduce((acc, lm) => ({ ...acc, [lm.id]: { ...lm.coordinate, name: lm.name, era: lm.era } }), {})
+  );
+  setNextLandmark(next);
+}, [activeRoute, location]);
    return (
     <View style={styles.container}>
 <MapView
@@ -127,6 +152,14 @@ export default function MapScreen() {
       strokeWidth={4}
     />
   )}
+{toStartCoords.length > 0 && (
+  <Polyline
+    coordinates={toStartCoords}
+    strokeColor="#C8860A"
+    strokeWidth={3}
+    lineDashPattern={[8, 4]}
+  />
+)}
 </MapView>
 
 {activeRoute ? (
@@ -134,10 +167,14 @@ export default function MapScreen() {
     <View style={styles.cardContent}>
       <Text style={styles.cardEra}>Active Route</Text>
       <Text style={styles.cardName}>{activeRoute.name}</Text>
-      <View style={styles.cardDistance}>
-        <Ionicons name="navigate" size={14} color="#2C5F2E" />
-        <Text style={styles.cardDistanceText}>{activeRoute.landmarks.length} landmarks</Text>
-      </View>
+      {nextLandmark && (
+        <View style={styles.cardDistance}>
+          <Ionicons name="navigate" size={14} color="#2C5F2E" />
+          <Text style={styles.cardDistanceText}>
+            Next: {nextLandmark.name} · {formatDistance(nextLandmark.distance)}
+          </Text>
+        </View>
+      )}
     </View>
     <TouchableOpacity
       style={styles.stopButton}

@@ -12,23 +12,28 @@ type ActiveRoute = {
 type RouteContextType = {
   activeRoute: ActiveRoute | null;
   setActiveRoute: (route: ActiveRoute | null) => void;
+  toStartCoords: Coordinate[];
+  setToStartCoords: (coords: Coordinate[]) => void;
 };
 
 const RouteContext = createContext<RouteContextType>({
   activeRoute: null,
   setActiveRoute: () => {},
+  toStartCoords: [],
+  setToStartCoords: () => {},
 });
 
 export function RouteProvider({ children }: { children: ReactNode }) {
   const [activeRoute, setActiveRoute] = useState<ActiveRoute | null>(null);
+  const [toStartCoords, setToStartCoords] = useState<Coordinate[]>([]);
 
   return (
-    <RouteContext.Provider value={{ activeRoute, setActiveRoute }}>
+    <RouteContext.Provider value={{ activeRoute, setActiveRoute, toStartCoords, setToStartCoords }}>
       {children}
     </RouteContext.Provider>
   );
 }
 
-export function useRoute() {
+export function useActiveRoute() {
   return useContext(RouteContext);
 }

@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { ROUTES } from '../../data/routes';
-import { useRoute } from '../../lib/RouteContext';
+import { useActiveRoute } from '../../lib/RouteContext';
+import * as Location from 'expo-location';
 
 
 
@@ -36,7 +37,7 @@ function getBounds(coords: { latitude: number; longitude: number }[]) {
 export default function RouteScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const navigation = useNavigation();
-  const { setActiveRoute } = useRoute();
+  const { setActiveRoute, setToStartCoords } = useActiveRoute();
   const router = useRouter();
   const route = ROUTES.find(r => r.id === id);
   const [routeCoords, setRouteCoords] = useState<{ latitude: number; longitude: number }[]>([]);
@@ -145,16 +146,45 @@ export default function RouteScreen() {
 
         <TouchableOpacity
           style={styles.startButton}
-          onPress={() => {
-            console.log('routeCoords at press:', routeCoords.length, routeCoords[0]);
-            setActiveRoute({
-              id: route.id,
-              name: route.name,
-              coords: routeCoords,
-              landmarks: route.landmarks,
-            });
-            router.push('/(tabs)');
-          }}
+          onPress={async () => {
+  setActiveRoute({
+    id: route.id,
+    name: route.name,
+    coords: routeCoords,
+    landmarks: route.landmarks,
+  });
+
+  try {
+    const loc = await Location.getCurrentPositionAsync({});
+    const { latitude, longitude } = loc.coords;
+    const firstLandmark = LANDMARK_COORDS[route.landmarks[0]];
+
+    const response = await fetch('https://api.openrouteservice.org/v2/directions/foot-walking/geojson', {
+      method: 'POST',
+      headers: {
+        'Authorization': ORS_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        coordinates: [
+          [longitude, latitude],
+          [firstLandmark.longitude, firstLandmark.latitude],
+        ],
+        options: { avoid_features: ['ferries'] },
+      }),
+    });
+
+    const data = await response.json();
+    const points = data.features[0].geometry.coordinates.map(
+      ([lng, lat]: [number, number]) => ({ latitude: lat, longitude: lng })
+    );
+    setToStartCoords(points);
+  } catch (err) {
+    console.error('Failed to fetch route to start:', err);
+  }
+
+  router.push('/(tabs)');
+}}
         >
           <Ionicons name="navigate" size={20} color="#fff" />
           <Text style={styles.startText}>Start Route</Text>
